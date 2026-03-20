@@ -2,7 +2,7 @@ name: Daily Health News Slack Bot
 
 on:
   schedule:
-    - cron: '0 1 * * *'  # UTC 01:00 = KST 10:00
+    - cron: '30 0 * * 1-5'  # UTC 00:30 = KST 09:30, 월~금
   workflow_dispatch:
 
 jobs:
@@ -23,6 +23,7 @@ jobs:
 
       - name: Run bot
         env:
+          TIMEZONE: Asia/Seoul
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}

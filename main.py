@@ -4,7 +4,10 @@ main.py — 일일 건기식 뉴스 슬랙 봇 진입점
 import logging
 import os
 import sys
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
+import holidays
 from dotenv import load_dotenv
 
 from collector import collect_all
@@ -28,6 +31,23 @@ def validate_env() -> None:
         sys.exit(1)
 
 
+def is_holiday_or_weekend() -> bool:
+    """오늘이 주말 또는 한국 공휴일이면 True 반환."""
+    tz = ZoneInfo("Asia/Seoul")
+    today = datetime.now(tz).date()
+
+    if today.weekday() >= 5:  # 5=토, 6=일
+        logging.info("오늘은 주말(%s)입니다. 실행을 건너뜁니다.", today.strftime("%A"))
+        return True
+
+    kr_holidays = holidays.KR(years=today.year)
+    if today in kr_holidays:
+        logging.info("오늘은 공휴일(%s)입니다. 실행을 건너뜁니다.", kr_holidays[today])
+        return True
+
+    return False
+
+
 def main() -> None:
     load_dotenv()
 
@@ -35,6 +55,9 @@ def main() -> None:
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+
+    if is_holiday_or_weekend():
+        sys.exit(0)
 
     validate_env()
 
