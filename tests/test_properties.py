@@ -200,7 +200,7 @@ def test_property3_llm_response_structure_completeness(items):
 # Feature: daily-health-news-slack-bot, Property 4: 본문 메시지 날짜 형식
 # ---------------------------------------------------------------------------
 
-_DATE_PATTERN = re.compile(r"^\[\d{1,2}/\d{1,2} 건기식 뉴스 봇\]")
+_DATE_PATTERN = re.compile(r"^📰 \*\d{1,2}/\d{1,2} 건기식 뉴스\*")
 
 
 @given(date=st.dates())
@@ -233,7 +233,7 @@ def test_property4_body_message_date_format(date):
     )
 
     # 월/일 값이 실제 날짜와 일치하는지 검증
-    expected_prefix = f"[{date.month}/{date.day} 건기식 뉴스 봇]"
+    expected_prefix = f"📰 *{date.month}/{date.day} 건기식 뉴스*"
     assert text.startswith(expected_prefix), (
         f"기대: '{expected_prefix}', 실제: '{text}'"
     )

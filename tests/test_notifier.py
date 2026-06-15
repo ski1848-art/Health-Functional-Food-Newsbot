@@ -120,19 +120,20 @@ class TestNotifyWithSupplements:
         )
 
     def test_format_article_includes_supplements(self):
-        """supplements가 있으면 '연관 기사' 섹션과 보완 기사 내용이 메시지에 포함된다."""
+        """supplements가 있으면 '연관기사' 구분과 보완 기사(제목 링크+요약)가 포함된다."""
         from notifier import _format_article
 
         text = _format_article(self._main_with_supplement())
 
-        assert "콜라겐 신제품 출시" in text
-        assert "연관 기사" in text
-        assert "콜라겐 표시기준 개정" in text
-        assert "규제 동향" in text
-        assert "https://example.com/sup" in text
+        assert "콜라겐 신제품 출시" in text          # main 제목
+        assert "https://example.com/main" in text   # main 제목이 원문 링크
+        assert "연관기사" in text                    # 연관기사 구분
+        assert "콜라겐 표시기준 개정" in text         # 보완 제목
+        assert "규제 동향" in text                   # 관계 라벨(텍스트)
+        assert "https://example.com/sup" in text     # 보완 제목 링크
 
-    def test_body_text_shows_group_count(self):
-        """연관 그룹이 있으면 본문 헤더에 '연관 그룹 N개'가 표시된다."""
+    def test_body_text_shows_article_count_and_unfurl_off(self):
+        """본문 헤더에 총 건수가 표시되고, 자동 미리보기(unfurl)는 꺼져 있다."""
         from notifier import notify
 
         mock_client = MagicMock()
@@ -142,5 +143,8 @@ class TestNotifyWithSupplements:
             with patch("notifier.WebClient", return_value=mock_client):
                 notify([self._main_with_supplement()])
 
-        body_text = mock_client.chat_postMessage.call_args_list[0][1].get("text", "")
-        assert "연관 그룹 1개" in body_text
+        body_call = mock_client.chat_postMessage.call_args_list[0]
+        body_text = body_call[1].get("text", "")
+        assert "총 1건" in body_text
+        assert body_call[1].get("unfurl_links") is False
+        assert body_call[1].get("unfurl_media") is False
