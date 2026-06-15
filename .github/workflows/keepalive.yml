@@ -1,0 +1,25 @@
+name: Keep Alive
+
+# 60일간 레포 활동(커밋/푸시)이 없으면 GitHub이 scheduled workflow를
+# 자동으로 끄는 disabled_inactivity 를 방지한다.
+# 격주로 빈 커밋을 push 해 레포 활동을 유지 → main.yml(뉴스 봇)이 꺼지지 않는다.
+on:
+  schedule:
+    - cron: '0 3 1,15 * *'  # 매월 1일·15일 03:00 UTC (최대 간격 ~16일, 60일 한참 이내)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Empty commit to keep repository active
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keep-alive (prevent schedule auto-disable)"
+          git push
