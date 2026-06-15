@@ -68,3 +68,68 @@ class TestAnalyzeApiFailure:
                 from analyzer import analyze
                 with pytest.raises(Exception):
                     analyze(articles)
+
+
+class TestBuildGroups:
+    """_build_groups — 보완관계 그룹핑 로직 단위 테스트"""
+
+    def _article(self, headline, group_id=None, role="main", relation_label=None):
+        from models import SummarizedArticle
+
+        return SummarizedArticle(
+            keyword_source="[건기식/네이버]",
+            headline=headline,
+            summary="• 요약1\n• 요약2\n• 요약3",
+            url=f"https://example.com/{headline}",
+            group_id=group_id,
+            role=role,
+            relation_label=relation_label,
+        )
+
+    def test_independent_articles_pass_through(self):
+        """group_id가 모두 None이면 전부 독립 기사로 그대로 반환된다."""
+        from analyzer import _build_groups
+
+        articles = [self._article("A"), self._article("B")]
+        result = _build_groups(articles)
+
+        assert len(result) == 2
+        assert all(not a.supplements for a in result)
+
+    def test_supplement_attached_to_main(self):
+        """같은 group_id의 supplement는 main의 supplements에 붙고, 최상위엔 main만 남는다."""
+        from analyzer import _build_groups
+
+        main = self._article("메인기사", group_id=1, role="main")
+        sup = self._article("보완기사", group_id=1, role="supplement", relation_label="규제 동향")
+        result = _build_groups([main, sup])
+
+        assert len(result) == 1
+        assert result[0].headline == "메인기사"
+        assert len(result[0].supplements) == 1
+        assert result[0].supplements[0].headline == "보완기사"
+        assert result[0].supplements[0].relation_label == "규제 동향"
+
+    def test_orphan_supplement_becomes_independent(self):
+        """main이 없는 supplement는 누락되지 않고 독립 기사로 처리된다."""
+        from analyzer import _build_groups
+
+        orphan = self._article("고아보완", group_id=99, role="supplement")
+        result = _build_groups([orphan])
+
+        assert len(result) == 1
+        assert result[0].headline == "고아보완"
+
+    def test_mixed_groups_and_independents(self):
+        """그룹 기사와 독립 기사가 섞여 있어도 모두 반환된다 (supplement만 main 안으로)."""
+        from analyzer import _build_groups
+
+        main = self._article("메인", group_id=1, role="main")
+        sup = self._article("보완", group_id=1, role="supplement")
+        indep = self._article("독립", group_id=None)
+        result = _build_groups([main, sup, indep])
+
+        assert len(result) == 2
+        assert {a.headline for a in result} == {"메인", "독립"}
+        main_result = next(a for a in result if a.headline == "메인")
+        assert len(main_result.supplements) == 1

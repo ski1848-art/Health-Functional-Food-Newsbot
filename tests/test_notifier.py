@@ -94,3 +94,53 @@ class TestNotifySlackFailure:
                 from notifier import notify
                 # 예외가 발생하지 않아야 함
                 notify(summaries)
+
+
+class TestNotifyWithSupplements:
+    """보완관계 그룹 렌더링 — _format_article 및 본문 요약 검증"""
+
+    def _main_with_supplement(self):
+        from models import SummarizedArticle
+
+        return SummarizedArticle(
+            keyword_source="[건기식/네이버]",
+            headline="콜라겐 신제품 출시",
+            summary="• 핵심 요약",
+            url="https://example.com/main",
+            supplements=[
+                SummarizedArticle(
+                    keyword_source="[규제/식약처]",
+                    headline="콜라겐 표시기준 개정",
+                    summary="• 규제 요약",
+                    url="https://example.com/sup",
+                    role="supplement",
+                    relation_label="규제 동향",
+                )
+            ],
+        )
+
+    def test_format_article_includes_supplements(self):
+        """supplements가 있으면 '연관 기사' 섹션과 보완 기사 내용이 메시지에 포함된다."""
+        from notifier import _format_article
+
+        text = _format_article(self._main_with_supplement())
+
+        assert "콜라겐 신제품 출시" in text
+        assert "연관 기사" in text
+        assert "콜라겐 표시기준 개정" in text
+        assert "규제 동향" in text
+        assert "https://example.com/sup" in text
+
+    def test_body_text_shows_group_count(self):
+        """연관 그룹이 있으면 본문 헤더에 '연관 그룹 N개'가 표시된다."""
+        from notifier import notify
+
+        mock_client = MagicMock()
+        mock_client.chat_postMessage.return_value = {"ts": "123.456"}
+
+        with patch.dict(os.environ, REQUIRED_VARS, clear=False):
+            with patch("notifier.WebClient", return_value=mock_client):
+                notify([self._main_with_supplement()])
+
+        body_text = mock_client.chat_postMessage.call_args_list[0][1].get("text", "")
+        assert "연관 그룹 1개" in body_text
