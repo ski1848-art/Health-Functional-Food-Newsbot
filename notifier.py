@@ -51,7 +51,7 @@ def notify(summaries: list[SummarizedArticle]) -> None:
 
     ts = response["ts"]
 
-    for article in summaries[:10]:  # 최대 10건
+    for article in summaries[:10]:  # 최대 10개 main 기사 (supplement는 각 메시지에 포함)
         thread_text = _format_article(article)
         try:
             client.chat_postMessage(channel=channel_id, text=thread_text, thread_ts=ts)

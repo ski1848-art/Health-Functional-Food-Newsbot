@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Optional
 
 from openai import OpenAI
 
@@ -108,13 +109,23 @@ def _analyze_batch(client: OpenAI, articles: list[Article]) -> list[SummarizedAr
                 headline=item["headline"],
                 summary=item["summary"],
                 url=item["url"],
-                group_id=item.get("group_id"),
+                group_id=_coerce_group_id(item.get("group_id")),
                 role=item.get("role", "main"),
                 relation_label=item.get("relation_label"),
             )
         )
 
     return results
+
+
+def _coerce_group_id(raw) -> Optional[int]:
+    """GPT가 group_id를 문자열로 줄 수 있어 정수로 정규화. 변환 불가/None이면 None(독립 기사)."""
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (ValueError, TypeError):
+        return None
 
 
 def _build_groups(articles: list[SummarizedArticle]) -> list[SummarizedArticle]:
@@ -124,12 +135,25 @@ def _build_groups(articles: list[SummarizedArticle]) -> list[SummarizedArticle]:
     independents: list[SummarizedArticle] = []
 
     for article in articles:
+        role = (article.role or "").strip().lower()
         if article.group_id is None:
             independents.append(article)
-        elif article.role == "main":
-            mains[article.group_id] = article
-        else:
+        elif role == "main":
+            if article.group_id in mains:
+                # 같은 group_id에 main이 2개 이상 — 조용한 소실 방지: 두 번째는 독립 기사로 강등
+                logger.warning(
+                    "group_id=%s에 main이 2개 이상 — '%s'를 독립 기사로 처리 (기존 main: '%s')",
+                    article.group_id, article.headline, mains[article.group_id].headline,
+                )
+                independents.append(article)
+            else:
+                mains[article.group_id] = article
+        elif role == "supplement":
             supplements.append(article)
+        else:
+            # 예상외 role 값 — 누락 방지를 위해 독립 기사로 처리
+            logger.warning("알 수 없는 role=%r — '%s'를 독립 기사로 처리", article.role, article.headline)
+            independents.append(article)
 
     # supplement를 해당 main에 연결
     for sup in supplements:

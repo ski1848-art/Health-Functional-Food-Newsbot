@@ -133,3 +133,35 @@ class TestBuildGroups:
         assert {a.headline for a in result} == {"메인", "독립"}
         main_result = next(a for a in result if a.headline == "메인")
         assert len(main_result.supplements) == 1
+
+    def test_duplicate_main_same_group_id_keeps_both(self):
+        """같은 group_id에 main이 2개 와도 어느 기사도 소실되지 않는다 (리뷰 #1)."""
+        from analyzer import _build_groups
+
+        main1 = self._article("메인1", group_id=1, role="main")
+        main2 = self._article("메인2", group_id=1, role="main")
+        result = _build_groups([main1, main2])
+
+        assert len(result) == 2
+        assert {a.headline for a in result} == {"메인1", "메인2"}
+
+    def test_unknown_role_not_silently_dropped(self):
+        """role이 'MAIN'처럼 대소문자/예상 밖 값이어도 기사가 소실되지 않는다 (리뷰 #3)."""
+        from analyzer import _build_groups
+
+        upper = self._article("대문자메인", group_id=1, role="MAIN")
+        weird = self._article("이상한롤", group_id=2, role="primary")
+        result = _build_groups([upper, weird])
+
+        headlines = {a.headline for a in result}
+        assert "대문자메인" in headlines  # MAIN → main으로 정규화
+        assert "이상한롤" in headlines    # 미지의 role → 독립 기사로 보존
+
+    def test_coerce_group_id_normalizes_types(self):
+        """_coerce_group_id는 문자열 숫자를 int로, 변환 불가/None은 None으로 정규화한다 (리뷰 #2)."""
+        from analyzer import _coerce_group_id
+
+        assert _coerce_group_id("1") == 1
+        assert _coerce_group_id(1) == 1
+        assert _coerce_group_id(None) is None
+        assert _coerce_group_id("abc") is None
