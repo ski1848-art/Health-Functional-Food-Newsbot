@@ -30,4 +30,7 @@ jobs:
           NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
           APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
+          # 슬랙 발송 뒤 애널리틱스에 한 부 보관(forwarder.py). 없으면 조용히 건너뛴다 — 알림엔 영향 없음.
+          HFF_NEWS_URL: ${{ secrets.HFF_NEWS_URL }}
+          HFF_NEWS_TOKEN: ${{ secrets.HFF_NEWS_TOKEN }}
         run: python main.py
