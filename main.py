@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from collector import collect_all
 from analyzer import analyze
 from notifier import notify
+from forwarder import forward
 
 REQUIRED_ENV_VARS = [
     "OPENAI_API_KEY",
@@ -64,6 +65,10 @@ def main() -> None:
     articles = collect_all()
     summaries = analyze(articles)
     notify(summaries)
+
+    # 슬랙 발송이 끝난 **뒤에** 애널리틱스에 한 부 보관시킨다.
+    # 순서가 중요하다 — 보관이 실패해도 알림은 이미 나가 있어야 한다(forward 는 예외를 던지지 않는다).
+    forward(summaries)
 
 
 if __name__ == "__main__":
